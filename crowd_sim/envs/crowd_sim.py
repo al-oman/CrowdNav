@@ -47,6 +47,8 @@ class CrowdSim(gym.Env):
         self.states = None
         self.action_values = None
         self.attention_weights = None
+        # optional external safety calculator (injected by test harness)
+        self.safety_calculator = None
 
     def configure(self, config):
         self.config = config
@@ -422,6 +424,9 @@ class CrowdSim(gym.Env):
         """
         Compute a 2D safety field over the simulation space for a single frame.
 
+        If self.safety_calculator is set (injected externally), delegates to it.
+        Otherwise falls back to built-in isotropic Gaussian.
+
         Args:
             human_states: list of human FullState objects for this frame
             xlim: (xmin, xmax) bounds of the grid
@@ -433,11 +438,13 @@ class CrowdSim(gym.Env):
                          1.0 = safe, 0.0 = dangerous
             extent: (xmin, xmax, ymin, ymax) for imshow
         """
+        if self.safety_calculator is not None:
+            return self.safety_calculator(human_states, xlim, ylim, resolution)
+
         x = np.arange(xlim[0], xlim[1], resolution)
         y = np.arange(ylim[0], ylim[1], resolution)
         xx, yy = np.meshgrid(x, y)
 
-        # TODO: populate these parameters from config or SocialNavigator
         sigma = 0.8
         h = 1.0
 
@@ -446,8 +453,6 @@ class CrowdSim(gym.Env):
             dx = xx - human.px
             dy = yy - human.py
             dist_sq = dx ** 2 + dy ** 2
-            # TODO: replace with your desired safety function
-            # (isotropic Gaussian for now, swap for anisotropic/velocity-aware later)
             danger = h * np.exp(-dist_sq / (2.0 * sigma ** 2))
             safety = np.minimum(safety, 1.0 - danger)
 
