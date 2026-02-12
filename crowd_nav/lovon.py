@@ -57,7 +57,7 @@ def main():
                 model_weights = os.path.join(args.model_dir, 'rl_model.pth')
     else:
         env_config_file = args.env_config
-        policy_config_file = args.env_config
+        policy_config_file = args.policy_config
 
     # configure logging and device
     logging.basicConfig(level=logging.INFO, format='%(asctime)s, %(levelname)s: %(message)s',
@@ -112,7 +112,7 @@ def main():
         last_pos = np.array(robot.get_position())
         while not done:
             action = robot.act(ob)
-            # print(action)
+            print(action)
             ob, _, done, info = env.step(action)
             current_pos = np.array(robot.get_position())
             logging.debug('Speed: %.2f', np.linalg.norm(current_pos - last_pos) / robot.time_step)
