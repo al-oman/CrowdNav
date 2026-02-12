@@ -10,6 +10,23 @@ from crowd_nav.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.robot import Robot
 from crowd_sim.envs.policy.orca import ORCA
 
+def display_config(env_config, env_config_file, policy_config, policy_config_file):
+    print("\n" + "="*80)
+    print("POLICY CONFIG FILE:", os.path.abspath(policy_config_file))
+    print("="*80)
+    for section in policy_config.sections():
+        print(f"\n[{section}]")
+        for key, value in policy_config.items(section):
+            print(f"{key} = {value}")
+
+    print("\n" + "="*80)
+    print("ENV CONFIG FILE:", os.path.abspath(env_config_file))
+    print("="*80)
+    for section in env_config.sections():
+        print(f"\n[{section}]")
+        for key, value in env_config.items(section):
+            print(f"{key} = {value}")
+    print("="*80 + "\n") 
 
 def main():
     parser = argparse.ArgumentParser('Parse configuration file')
@@ -72,6 +89,9 @@ def main():
     env.set_robot(robot)
     explorer = Explorer(env, robot, device, gamma=0.9)
 
+    # Display experiment information
+    display_config(env_config, env_config_file, policy_config, policy_config_file)
+
     policy.set_phase(args.phase)
     policy.set_device(device)
     # set safety space for ORCA in non-cooperative simulation
@@ -92,7 +112,7 @@ def main():
         last_pos = np.array(robot.get_position())
         while not done:
             action = robot.act(ob)
-            print(action)
+            # print(action)
             ob, _, done, info = env.step(action)
             current_pos = np.array(robot.get_position())
             logging.debug('Speed: %.2f', np.linalg.norm(current_pos - last_pos) / robot.time_step)
