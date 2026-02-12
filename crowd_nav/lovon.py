@@ -43,6 +43,7 @@ def main():
     parser.add_argument('--circle', default=False, action='store_true')
     parser.add_argument('--video_file', type=str, default=None)
     parser.add_argument('--traj', default=False, action='store_true')
+    parser.add_argument('--safety_heatmap', default=False, action='store_true')
     args = parser.parse_args()
 
     if args.model_dir is not None:
@@ -120,7 +121,7 @@ def main():
         if args.traj:
             env.render('traj', args.video_file)
         else:
-            env.render('video', args.video_file)
+            env.render('video', args.video_file, safety_heatmap=args.safety_heatmap)
 
         logging.info('It takes %.2f seconds to finish. Final status is %s', env.global_time, info)
         if robot.visible and info == 'reach goal':

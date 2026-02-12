@@ -419,44 +419,7 @@ class CrowdSim(gym.Env):
 
         return ob, reward, done, info
 
-    def compute_safety_field(self, human_states, xlim, ylim, resolution=0.1):
-        """
-        Compute a 2D safety field over the simulation space for a single frame.
-
-        Args:
-            human_states: list of human FullState objects for this frame
-            xlim: (xmin, xmax) bounds of the grid
-            ylim: (ymin, ymax) bounds of the grid
-            resolution: grid cell size in meters
-
-        Returns:
-            safety_grid: 2D numpy array with safety values in [0, 1]
-                         1.0 = safe, 0.0 = dangerous
-            extent: (xmin, xmax, ymin, ymax) for imshow
-        """
-        x = np.arange(xlim[0], xlim[1], resolution)
-        y = np.arange(ylim[0], ylim[1], resolution)
-        xx, yy = np.meshgrid(x, y)
-
-        # TODO: populate these parameters from config or SocialNavigator
-        sigma = 0.8
-        h = 1.0
-
-        safety = np.ones_like(xx)
-        for human in human_states:
-            dx = xx - human.px
-            dy = yy - human.py
-            dist_sq = dx ** 2 + dy ** 2
-            # TODO: replace with your desired safety function
-            # (isotropic Gaussian for now, swap for anisotropic/velocity-aware later)
-            danger = h * np.exp(-dist_sq / (2.0 * sigma ** 2))
-            safety = np.minimum(safety, 1.0 - danger)
-
-        safety = np.clip(safety, 0.0, 1.0)
-        extent = [xlim[0], xlim[1], ylim[0], ylim[1]]
-        return safety, extent
-
-    def render(self, mode='human', output_file=None, safety_heatmap=False):
+    def render(self, mode='human', output_file=None):
         from matplotlib import animation
         import matplotlib.pyplot as plt
         plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
@@ -535,15 +498,6 @@ class CrowdSim(gym.Env):
             ax.add_artist(goal)
             plt.legend([robot, goal], ['Robot', 'Goal'], fontsize=16)
 
-            # safety heatmap (background layer)
-            heatmap_img = None
-            if safety_heatmap:
-                safety_grid, extent = self.compute_safety_field(
-                    self.states[0][1], xlim=(-6, 6), ylim=(-6, 6))
-                heatmap_img = ax.imshow(
-                    safety_grid, extent=extent, origin='lower',
-                    cmap='RdYlGn', vmin=0, vmax=1, alpha=0.5, zorder=0)
-
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]
             humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False)
@@ -607,12 +561,6 @@ class CrowdSim(gym.Env):
                     if self.attention_weights is not None:
                         human.set_color(str(self.attention_weights[frame_num][i]))
                         attention_scores[i].set_text('human {}: {:.2f}'.format(i, self.attention_weights[frame_num][i]))
-
-                # update safety heatmap
-                if safety_heatmap and heatmap_img is not None:
-                    safety_grid, _ = self.compute_safety_field(
-                        self.states[frame_num][1], xlim=(-6, 6), ylim=(-6, 6))
-                    heatmap_img.set_data(safety_grid)
 
                 time.set_text('Time: {:.2f}'.format(frame_num * self.time_step))
 
