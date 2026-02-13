@@ -420,45 +420,46 @@ class CrowdSim(gym.Env):
 
         return ob, reward, done, info
 
-    def compute_safety_field(self, human_states, xlim, ylim, resolution=0.1):
-        """
-        Compute a 2D safety field over the simulation space for a single frame.
+    #REDUNDANT
+    # def compute_safety_field(self, human_states, xlim, ylim, resolution=0.1):
+    #     """
+    #     Compute a 2D safety field over the simulation space for a single frame.
 
-        If self.safety_calculator is set (injected externally), delegates to it.
-        Otherwise falls back to built-in isotropic Gaussian.
+    #     If self.safety_calculator is set (injected externally), delegates to it.
+    #     Otherwise falls back to built-in isotropic Gaussian.
 
-        Args:
-            human_states: list of human FullState objects for this frame
-            xlim: (xmin, xmax) bounds of the grid
-            ylim: (ymin, ymax) bounds of the grid
-            resolution: grid cell size in meters
+    #     Args:
+    #         human_states: list of human FullState objects for this frame
+    #         xlim: (xmin, xmax) bounds of the grid
+    #         ylim: (ymin, ymax) bounds of the grid
+    #         resolution: grid cell size in meters
 
-        Returns:
-            safety_grid: 2D numpy array with safety values in [0, 1]
-                         1.0 = safe, 0.0 = dangerous
-            extent: (xmin, xmax, ymin, ymax) for imshow
-        """
-        if self.safety_calculator is not None:
-            return self.safety_calculator(human_states, xlim, ylim, resolution)
+    #     Returns:
+    #         safety_grid: 2D numpy array with safety values in [0, 1]
+    #                      1.0 = safe, 0.0 = dangerous
+    #         extent: (xmin, xmax, ymin, ymax) for imshow
+    #     """
+    #     if self.safety_calculator is not None:
+    #         return self.safety_calculator(human_states, xlim, ylim)
 
-        x = np.arange(xlim[0], xlim[1], resolution)
-        y = np.arange(ylim[0], ylim[1], resolution)
-        xx, yy = np.meshgrid(x, y)
+    #     x = np.arange(xlim[0], xlim[1], resolution)
+    #     y = np.arange(ylim[0], ylim[1], resolution)
+    #     xx, yy = np.meshgrid(x, y)
 
-        sigma = 0.8
-        h = 1.0
+    #     sigma = 0.8
+    #     h = 1.0
 
-        safety = np.ones_like(xx)
-        for human in human_states:
-            dx = xx - human.px
-            dy = yy - human.py
-            dist_sq = dx ** 2 + dy ** 2
-            danger = h * np.exp(-dist_sq / (2.0 * sigma ** 2))
-            safety = np.minimum(safety, 1.0 - danger)
+    #     safety = np.ones_like(xx)
+    #     for human in human_states:
+    #         dx = xx - human.px
+    #         dy = yy - human.py
+    #         dist_sq = dx ** 2 + dy ** 2
+    #         danger = h * np.exp(-dist_sq / (2.0 * sigma ** 2))
+    #         safety = np.minimum(safety, 1.0 - danger)
 
-        safety = np.clip(safety, 0.0, 1.0)
-        extent = [xlim[0], xlim[1], ylim[0], ylim[1]]
-        return safety, extent
+    #     safety = np.clip(safety, 0.0, 1.0)
+    #     extent = [xlim[0], xlim[1], ylim[0], ylim[1]]
+    #     return safety, extent
 
     def render(self, mode='human', output_file=None, safety_heatmap=False):
         from matplotlib import animation
@@ -542,11 +543,15 @@ class CrowdSim(gym.Env):
             # safety heatmap (background layer)
             heatmap_img = None
             if safety_heatmap:
-                safety_grid, extent = self.compute_safety_field(
+                safety_grid, extent = self.safety_calculator(
                     self.states[0][1], xlim=(-6, 6), ylim=(-6, 6))
                 heatmap_img = ax.imshow(
                     safety_grid, extent=extent, origin='lower',
                     cmap='RdYlGn', vmin=0, vmax=1, alpha=0.5, zorder=0)
+                cbar = fig.colorbar(heatmap_img, ax=ax, shrink=0.8, pad=0.02)
+                cbar.set_label('Safety Score', fontsize=12)
+                cbar.set_ticks([0, 0.25, 0.5, 0.75, 1.0])
+                cbar.set_ticklabels(['0.0 (danger)', '0.25', '0.5', '0.75', '1.0 (safe)'])
 
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]
@@ -614,7 +619,7 @@ class CrowdSim(gym.Env):
 
                 # update safety heatmap
                 if safety_heatmap and heatmap_img is not None:
-                    safety_grid, _ = self.compute_safety_field(
+                    safety_grid, _ = self.safety_calculator(
                         self.states[frame_num][1], xlim=(-6, 6), ylim=(-6, 6))
                     heatmap_img.set_data(safety_grid)
 
