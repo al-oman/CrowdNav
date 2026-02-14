@@ -337,6 +337,12 @@ class CrowdSim(gym.Env):
             if self.robot.kinematics == 'holonomic':
                 vx = human.vx - action.vx
                 vy = human.vy - action.vy
+            elif self.robot.kinematics == 'unicycle_xyrot':
+                theta = self.robot.theta + action.wz * self.time_step
+                robot_vx = np.cos(theta) * action.vx - np.sin(theta) * action.vy
+                robot_vy = np.sin(theta) * action.vx + np.cos(theta) * action.vy
+                vx = human.vx - robot_vx
+                vy = human.vy - robot_vy
             else:
                 vx = human.vx - action.v * np.cos(action.r + self.robot.theta)
                 vy = human.vy - action.v * np.sin(action.r + self.robot.theta)
@@ -575,7 +581,7 @@ class CrowdSim(gym.Env):
 
             # compute orientation in each step and use arrow to show the direction
             radius = self.robot.radius
-            if self.robot.kinematics == 'unicycle':
+            if self.robot.kinematics in ('unicycle', 'unicycle_xyrot'):
                 orientation = [((state[0].px, state[0].py), (state[0].px + radius * np.cos(state[0].theta),
                                                              state[0].py + radius * np.sin(state[0].theta))) for state
                                in self.states]

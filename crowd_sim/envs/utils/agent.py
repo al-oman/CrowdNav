@@ -3,7 +3,7 @@ from numpy.linalg import norm
 import abc
 import logging
 from crowd_sim.envs.policy.policy_factory import policy_factory
-from crowd_sim.envs.utils.action import ActionXY, ActionRot
+from crowd_sim.envs.utils.action import ActionXY, ActionRot, ActionXYRot
 from crowd_sim.envs.utils.state import ObservableState, FullState
 
 
@@ -67,6 +67,10 @@ class Agent(object):
         if self.kinematics == 'holonomic':
             next_vx = action.vx
             next_vy = action.vy
+        elif self.kinematics == 'unicycle_xyrot':
+            next_theta = self.theta + action.wz * self.time_step
+            next_vx = np.cos(next_theta) * action.vx - np.sin(next_theta) * action.vy
+            next_vy = np.sin(next_theta) * action.vx + np.cos(next_theta) * action.vy
         else:
             next_theta = self.theta + action.r
             next_vx = action.v * np.cos(next_theta)
@@ -104,14 +108,22 @@ class Agent(object):
     def check_validity(self, action):
         if self.kinematics == 'holonomic':
             assert isinstance(action, ActionXY)
-        else:
+        elif self.kinematics == 'unicycle':
             assert isinstance(action, ActionRot)
+        elif self.kinematics == 'unicycle_xyrot':
+            assert isinstance(action, ActionXYRot)
+        else:
+            raise ValueError(f"Unknown kinematics: {self.kinematics}")
 
     def compute_position(self, action, delta_t):
         self.check_validity(action)
         if self.kinematics == 'holonomic':
             px = self.px + action.vx * delta_t
             py = self.py + action.vy * delta_t
+        elif self.kinematics == 'unicycle_xyrot':
+            theta = self.theta + action.wz * delta_t
+            px = self.px + (np.cos(theta) * action.vx - np.sin(theta) * action.vy) * delta_t
+            py = self.py + (np.sin(theta) * action.vx + np.cos(theta) * action.vy) * delta_t
         else:
             theta = self.theta + action.r
             px = self.px + np.cos(theta) * action.v * delta_t
@@ -129,6 +141,10 @@ class Agent(object):
         if self.kinematics == 'holonomic':
             self.vx = action.vx
             self.vy = action.vy
+        elif self.kinematics == 'unicycle_xyrot':
+            self.theta = (self.theta + action.wz * self.time_step) % (2 * np.pi)
+            self.vx = np.cos(self.theta) * action.vx - np.sin(self.theta) * action.vy
+            self.vy = np.sin(self.theta) * action.vx + np.cos(self.theta) * action.vy
         else:
             self.theta = (self.theta + action.r) % (2 * np.pi)
             self.vx = action.v * np.cos(self.theta)
